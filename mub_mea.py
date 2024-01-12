@@ -34,7 +34,7 @@ class myPico():
         
         # ----------create channels----------
         # second method
-        self.cc_channel = self.TH260.manipulators.coincidence(chans = [0,1], windowTime = 3000, mode = CoincidenceMode.CountAll, keepChannels = True)
+        self.cc_channel = self.TH260.manipulators.coincidence(chans = [0,1], windowTime = 25000, mode = CoincidenceMode.CountAll, keepChannels = True)
 
         # third method
         self.herald_channel = self.TH260.manipulators.herald(herald = 0, gateChans = [1], delayTime = 0, gateTime = 10000, keepChannels = True)
@@ -475,7 +475,7 @@ if __name__ == '__main__':
     TH260P.window.holoDisplay(0)
 
     TH260P.window.refresh_1(b, direct_call = True)
-    TH260P.window.refresh_2(c, direct_call = True)
+    TH260P.window.refresh_2(b, direct_call = True)
     time.sleep(2)
     TH260P.runMea()
 

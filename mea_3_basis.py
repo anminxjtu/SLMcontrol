@@ -494,17 +494,17 @@ if __name__ == '__main__':
     SLM.frame[1].Window.img.SaveFile('slm0.png', wx.BITMAP_TYPE_PNG)
     TH260P.window.holoDisplay(0)
 
-    TOPO = [-2,-1,0,1,2]
+    TOPO = [-2,-1,1,2]
     BASIS_NUM = len(TOPO)
     MEA_BAS = []
 
-    MEA_BASE_NAME = "RANDOM"
+    MEA_BASE_NAME = "PAULI"
     match MEA_BASE_NAME:
         case "PAULI":
             for i in range(0,BASIS_NUM-1):
                 for j in range(i+1,BASIS_NUM):
-                    AMP = [0,0,0,0,0]
-                    PHA = [0,0,0,0,0]
+                    AMP = [0,0,0,0]
+                    PHA = [0,0,0,0]
                     # TODO: please optimize the calculation of LG, remove the redundant calculation
                     for k in range(0,6):
                         if k == 0:
@@ -527,8 +527,8 @@ if __name__ == '__main__':
                             AMP[j] = 1
                             PHA[j] = -PI/2
                         MEA_BAS.append({'Amp':AMP,'Pha':PHA,'Topo':TOPO})
-                        AMP = [0,0,0,0,0]
-                        PHA = [0,0,0,0,0]
+                        AMP = [0,0,0,0]
+                        PHA = [0,0,0,0]
         case "MUB":
             import numpy as np
             d = BASIS_NUM
@@ -543,7 +543,7 @@ if __name__ == '__main__':
             for i in range(d):
                 Z[i,i] = omega**i
 
-            Weyl_operator = []
+            Weyl_operator = []  
             Weyl_operator.append(Z)
             for i in range(d):
                 ZI = np.linalg.matrix_power(Z, i)

@@ -220,7 +220,19 @@ class Ui(QMainWindow):
         self.ui.spinBox_OAM1_3.setRange(-20,20)
         self.ui.spinBox_OAM2_3.setRange(-20,20)
         self.ui.spinBox_OAM3_3.setRange(-20,20)
-        
+
+        self.ui.spinBox_p1.setRange(-20,20)
+        self.ui.spinBox_p2.setRange(-20,20)
+        self.ui.spinBox_p3.setRange(-20,20)
+
+        self.ui.spinBox_p1_2.setRange(-20,20)
+        self.ui.spinBox_p2_2.setRange(-20,20)
+        self.ui.spinBox_p3_2.setRange(-20,20)
+
+        self.ui.spinBox_p1_3.setRange(-20,20)
+        self.ui.spinBox_p2_3.setRange(-20,20)
+        self.ui.spinBox_p3_3.setRange(-20,20)
+
         self.ui.spinBox_AMP1.setRange(-20,20)
         self.ui.spinBox_AMP2.setRange(-20,20)
         self.ui.spinBox_AMP3.setRange(-20,20)
@@ -246,6 +258,10 @@ class Ui(QMainWindow):
         self.ui.spinBox_ybias1_2.setValue(-40)
         self.ui.spinBox_xbias1_3.setValue(-5)
         self.ui.spinBox_ybias1_3.setValue(-500)
+
+        self.ui.doubleSpinBox_MD1.setValue(1.00)
+        self.ui.doubleSpinBox_MD2.setValue(1.00)
+        self.ui.doubleSpinBox_MD3.setValue(1.00)
         
         # self.ui.doubleSpinBox_PHA1.setRange(-3.14,3.14,0.05)
 
@@ -299,15 +315,31 @@ class Ui(QMainWindow):
         acquired_oam.append(int(self.ui.spinBox_OAM2.value()))
         acquired_oam.append(int(self.ui.spinBox_OAM3.value()))
 
+        acquired_p = []
+        # TODO: Add GUI button
+        acquired_p.append(int(self.ui.spinBox_p1.value()))
+        acquired_p.append(int(self.ui.spinBox_p2.value()))
+        acquired_p.append(int(self.ui.spinBox_p3.value()))
+
+        acquired_MD = []
+        acquired_MD.append(int(self.ui.doubleSpinBox_MD1.value()))
+
+
+
         new_ell = {}
         new_ell['Amp'] = acquired_amp
         new_ell['Pha'] = acquired_pha
         new_ell['Topo'] = acquired_oam
+        new_ell['P'] = acquired_p
+        new_ell['MD'] = acquired_MD
+
+        # new_p = {}
+        # new_p['P'] = acquired_p
 
         wbais = self.ui.spinBox_xbias1.value()
         hbais = self.ui.spinBox_ybias1.value()
 
-        def postfun(new_ell,which_frame):
+        def postfun(new_ell, which_frame):
             _pic = slmPy.Superhologram(new_ell, 1920, 1080, wbais, hbais).img
             # TODO: POST the pic to the thread: wx
             event = slmPy.ImageEvent()
@@ -319,7 +351,7 @@ class Ui(QMainWindow):
         
         
 
-        GUI2SLMdisplay_thread = threading.Thread(target = postfun, name = 'GUIinput_2SLMdisplay', args= (new_ell,_which_frame,))
+        GUI2SLMdisplay_thread = threading.Thread(target = postfun, name = 'GUIinput_2SLMdisplay', args= (new_ell, _which_frame,))
         GUI2SLMdisplay_thread.start()
         logger.warning('GUIinput is posted to SLMdisplay')
         GUI2SLMdisplay_thread.join()
@@ -345,10 +377,24 @@ class Ui(QMainWindow):
             acquired_oam.append(int(self.ui.spinBox_OAM2_2.value()))
             acquired_oam.append(int(self.ui.spinBox_OAM3_2.value()))
 
+            acquired_p = []
+            # TODO: Add GUI button
+            acquired_p.append(int(self.ui.spinBox_p1_2.value()))
+            acquired_p.append(int(self.ui.spinBox_p2_2.value()))
+            acquired_p.append(int(self.ui.spinBox_p3_2.value()))
+
+            acquired_MD = []
+            acquired_MD.append(int(self.ui.doubleSpinBox_MD2.value()))
+
             new_ell = {}
             new_ell['Amp'] = acquired_amp
             new_ell['Pha'] = acquired_pha
             new_ell['Topo'] = acquired_oam
+            new_ell['P'] = acquired_p
+            new_ell['MD'] = acquired_MD
+
+            # new_p = {}
+            # new_p['P'] = acquired_p
 
         wbais = self.ui.spinBox_xbias1_2.value()
         hbais = self.ui.spinBox_ybias1_2.value()
@@ -365,7 +411,7 @@ class Ui(QMainWindow):
         
         
 
-        GUI2SLMdisplay_thread = threading.Thread(target = postfun, name = 'GUIinput_2SLMdisplay', args= (new_ell,_which_frame,))
+        GUI2SLMdisplay_thread = threading.Thread(target = postfun, name = 'GUIinput_2SLMdisplay', args= (new_ell, _which_frame,))
         GUI2SLMdisplay_thread.start()
         logger.warning('GUIinput is posted to SLMdisplay')
         GUI2SLMdisplay_thread.join()
@@ -392,10 +438,24 @@ class Ui(QMainWindow):
             acquired_oam.append(int(self.ui.spinBox_OAM2_3.value()))
             acquired_oam.append(int(self.ui.spinBox_OAM3_3.value()))
 
+            acquired_p = []
+            # TODO: Add GUI button
+            acquired_p.append(int(self.ui.spinBox_p1_3.value()))
+            acquired_p.append(int(self.ui.spinBox_p2_3.value()))
+            acquired_p.append(int(self.ui.spinBox_p3_3.value()))
+
+            acquired_MD = []
+            acquired_MD.append(int(self.ui.doubleSpinBox_MD3.value()))
+
             new_ell = {}
             new_ell['Amp'] = acquired_amp
             new_ell['Pha'] = acquired_pha
             new_ell['Topo'] = acquired_oam
+            new_ell['P'] = acquired_p
+            new_ell['MD'] = acquired_MD
+
+            # new_p = {}
+            # new_p['P'] = acquired_p
 
         wbais = self.ui.spinBox_xbias1_3.value()
         hbais = self.ui.spinBox_ybias1_3.value()
@@ -413,7 +473,7 @@ class Ui(QMainWindow):
         
         
 
-        GUI2SLMdisplay_thread = threading.Thread(target = postfun, name = 'GUIinput_2SLMdisplay', args= (new_ell,_which_frame,))
+        GUI2SLMdisplay_thread = threading.Thread(target = postfun, name = 'GUIinput_2SLMdisplay', args= (new_ell, _which_frame,))
         GUI2SLMdisplay_thread.start()
         logger.warning('GUIinput is posted to SLMdisplay')
         GUI2SLMdisplay_thread.join()

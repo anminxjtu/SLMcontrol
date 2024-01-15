@@ -9,7 +9,7 @@ import threading
 import datetime
 import sys
 import matplotlib.pyplot as plt
-
+from scipy.special import assoc_laguerre
 
 PI = math.pi
 PIXELPITCH = 8e-6
@@ -119,6 +119,7 @@ class LGhologram():
                  l,
                  w,
                  h,
+                 p = 0,
                  wBias = 0,
                  hBias = 0,
                  pixelPitch = PIXELPITCH,
@@ -127,6 +128,7 @@ class LGhologram():
                  blaze = BLAZE
                 ):
         self.ell = l
+        self.p = p
         self.blaze = blaze
         self.omega0 = beamWaist
         self.x = np.linspace(0, w, w)*pixelPitch
@@ -165,23 +167,41 @@ class LGhologram():
         self.phaseMatrix = self.phaseHologram()
         self.img = self.convertToBitmap(self.phaseMatrix)
 
-    def LGMode(self,_ell):
-        constantParameter = math.sqrt(1/math.pi/math.factorial(abs(_ell)))/self.omega0
-        firstTerm = ((np.sqrt(2)*self.r/self.omega0)**abs(_ell))
-        secondTerm = np.exp(-self.r**2/self.omega0**2)*np.exp(1j*_ell*self.theta)
-        amplitude =  constantParameter*firstTerm*secondTerm
+    def LGMode(self,_ell:int ,_p:int = 0, _z:float = 0):
+        """
+        generate the LG mode.
+
+        Parameters
+        ----------
+        ell: int
+
+          p: int
+
+          z: float
+             [m]
+        """
+        _k = 2*PI/WAVELENGTH
+        _zR = _k*self.omega0**2/2
+        _omegaz = math.sqrt(2*(_z**2+_zR**2)/_k/_zR)
+        constantParameter = math.sqrt(1*math.factorial(2*_p)/math.pi/math.factorial(_p+abs(_ell)))/_omegaz
+        firstTerm = ((np.sqrt(2)*self.r/_omegaz)**abs(_ell))
+        secondTerm = np.exp(-self.r**2/_omegaz**2)*np.exp(1j*_ell*self.theta)
+        thirdTerm = assoc_laguerre(2*self.r**2/_omegaz**2, _p, abs(_ell))
+        zTerm = np.exp(1j*_k*self.r**2*_z/2/(_z+_zR**2))*np.exp(-1j*(2*_p+abs(_ell)+1)*math.atan2(_z/_zR))
+
+        amplitude =  constantParameter*firstTerm*secondTerm*thirdTerm*zTerm
         intensity = amplitude*amplitude.conjugate()
         # print(amplitude/math.sqrt(sum(sum(intensity))))
         return  amplitude/sum(sum(np.sqrt(intensity)))
     
-    def phaseHologram(self):
-        self.AMP = self.LGMode(self.ell)
+    def phaseHologram(self, modulation_depth = 1):
+        self.AMP = self.LGMode(self.ell, self.p)
         lgAbs = abs(self.AMP)
         lgAngle = np.angle(self.AMP)
         sincInverse = self.asinc(lgAbs)
         M = 1 - 1/math.pi * sincInverse         # need a extra minus sign
         F = lgAngle - math.pi * M
-        mod = (F+2*math.pi*self.X/self.blaze)%(2*math.pi)
+        mod = (F+2*math.pi*modulation_depth*self.X/self.blaze)%(2*math.pi*modulation_depth)
         #-------------------------------------
         T = np.exp(1j*M*mod)
         return np.angle(T)
@@ -220,29 +240,37 @@ class LGhologram():
             249693053510060031661928074632553530869877798468407353253082594529911/4897091793534510236175803834629896837864823539630080000000000000000000000*y**49
     
 class Superhologram(LGhologram):
+    """
+    This class is used to generate holograms of superposition state based on LGhologram class.
+    """
     def _init__(self,
                 l,
                 w,
                 h,
+                p = 0,
                 wBais = 0,
                 hBais = 0,
                 pixelPitch = PIXELPITCH,
                 beamWaist = BEAMWAIST,
                 waveLength = WAVELENGTH,
                 blaze = BLAZE):
-        super(LGhologram, self).__init__(l,w,h,wBais,hBais)
+        super(LGhologram, self).__init__(l,w,h,p,wBais,hBais)
         pass
 
-    def phaseHologram(self):
+    def phaseHologram(self, modulation_depth = 1):
         # logger.error('This is superposition state phaseHologram function')
         _amplitude = self.ell['Amp']
         _phase = self.ell['Pha']
         _topo = self.ell['Topo']
+        _topoP = self.ell['P']
+        modulation_depth = self.ell['MD']
+
         _alen = len(_amplitude)
         _plen = len(_phase)
         _topolen = len(_topo)
+        _topoplen = len(_topoP)
 
-        if _alen != _plen:
+        if _alen != _plen or _topolen != _topoplen:
             logger.error('Superposition state form error, please check!')
             return
         _intensity = 0
@@ -258,7 +286,7 @@ class Superhologram(LGhologram):
         for i in range(_alen):
             if _acopy[i] == 0:
                 continue
-            self.AMP += np.exp(_phase[i]*1j)*_acopy[i]*self.LGMode(_topo[i])
+            self.AMP += np.exp(_phase[i]*1j)*_acopy[i]*self.LGMode(_topo[i],_topoP[i])
         
         lgAbs = abs(self.AMP)
 
@@ -269,7 +297,7 @@ class Superhologram(LGhologram):
         sincInverse = self.asinc(lgAbs)
         M = 1 - 1/math.pi * sincInverse         # need a extra minus sign
         F = lgAngle - math.pi * M
-        mod = (F+2*math.pi*self.X/self.blaze)%(2*math.pi)
+        mod = (F+2*math.pi*modulation_depth*self.X/self.blaze)%(2*math.pi*modulation_depth)
         #-------------------------------------
         T = np.exp(1j*M*mod)
         return np.angle(T)

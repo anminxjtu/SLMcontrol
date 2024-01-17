@@ -187,7 +187,7 @@ class LGhologram():
         firstTerm = ((np.sqrt(2)*self.r/_omegaz)**abs(_ell))
         secondTerm = np.exp(-self.r**2/_omegaz**2)*np.exp(1j*_ell*self.theta)
         thirdTerm = assoc_laguerre(2*self.r**2/_omegaz**2, _p, abs(_ell))
-        zTerm = np.exp(1j*_k*self.r**2*_z/2/(_z+_zR**2))*np.exp(-1j*(2*_p+abs(_ell)+1)*math.atan2(_z/_zR))
+        zTerm = np.exp(1j*_k*self.r**2*_z/2/(_z+_zR**2))*np.exp(-1j*(2*_p+abs(_ell)+1)*math.atan(_z/_zR))
 
         amplitude =  constantParameter*firstTerm*secondTerm*thirdTerm*zTerm
         intensity = amplitude*amplitude.conjugate()
@@ -263,7 +263,7 @@ class Superhologram(LGhologram):
         _phase = self.ell['Pha']
         _topo = self.ell['Topo']
         _topoP = self.ell['P']
-        modulation_depth = self.ell['MD']
+        modulation_depth = self.ell['MD'][0]
 
         _alen = len(_amplitude)
         _plen = len(_phase)

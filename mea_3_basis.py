@@ -515,219 +515,236 @@ class Ui(QMainWindow):
 PI = math.pi
 
 if __name__ == '__main__':
-    # lock = threading.Lock()
+    '''
+    0: Display mode
+    1: Measurement mode
+    '''
+
+    MODE_SELECT = 0
+
+    match MODE_SELECT:
+        case 0:
+            '''
+            Display mode
+            '''
+            lock = threading.Lock()
 
 
-    # SLM = slmPy.SLMdisplay(3)
+            SLM = slmPy.SLMdisplay(3)
 
-    # TH260P = myPico(SLM)
+            TH260P = myPico(SLM)
 
-    # time.sleep(3)
-    # logger.warning('----------1111111111!-----------')
-    # b = {'Amp':[1],'Pha':[0],'Topo':[0]}
-    # c = {'Amp':[1],'Pha':[0],'Topo':[1]}
-    # d = {'Amp':[1],'Pha':[0],'Topo':[-1]}
+            time.sleep(3)
+            logger.warning('----------1111111111!-----------')
+            b = {'Amp':[1],'Pha':[0],'Topo':[0], 'P':[0], 'MD':[1]}
+            c = {'Amp':[1],'Pha':[0],'Topo':[1], 'P':[0], 'MD':[1]}
+            d = {'Amp':[1],'Pha':[0],'Topo':[-1], 'P':[0], 'MD':[1]}
 
-    # WBAIS = 0
-    # HBAIS = 0
-    # SLM.refresh(1, WBAIS, HBAIS, b)
-    # SLM.frame[1].Window.img.SaveFile('slm0.png', wx.BITMAP_TYPE_PNG)
-    # TH260P.window.holoDisplay(0)
+            WBAIS = 0
+            HBAIS = 0
+            SLM.refresh(1, WBAIS, HBAIS, b)
+            SLM.frame[1].Window.img.SaveFile('slm0.png', wx.BITMAP_TYPE_PNG)
+            TH260P.window.holoDisplay(0)
 
-    # TH260P.window.refresh_1(b, direct_call = True)
-    # TH260P.window.refresh_2(c, direct_call = True)
-    # time.sleep(2)
-    # TH260P.runMea()
+            TH260P.window.refresh_1(c, direct_call = True)
+            TH260P.window.refresh_2(d, direct_call = True)
+            time.sleep(2)
+            TH260P.runMea()
+
+        case 1:
+            '''
+            Measurement mode
+            '''
+            lock = threading.Lock()
+            SLM = slmPy.SLMdisplay(3)
+            TH260P = myPico(SLM)
+            b = {'Amp':[1],'Pha':[0],'Topo':[0], 'P':[0], 'MD':[1]}
+            c = {'Amp':[1],'Pha':[0],'Topo':[1], 'P':[0], 'MD':[1]}
+            d = {'Amp':[1],'Pha':[0],'Topo':[-1], 'P':[0], 'MD':[1]}
+
+            WBAIS = 0
+            HBAIS = 0
+            SLM.refresh(1, WBAIS, HBAIS, b)
+            SLM.frame[1].Window.img.SaveFile('slm0.png', wx.BITMAP_TYPE_PNG)
+            TH260P.window.holoDisplay(0)
+
+            TOPO = [-2,-1,1,2]
+            TOPO_P = [1,2,3,4]
+            assert(len(TOPO) == len(TOPO_P))
+
+            BASIS_NUM = len(TOPO)
+            MEA_BAS = []
+
+            MEA_BASE_NAME = "PAULI"
+            match MEA_BASE_NAME:
+                case "PAULI":
+                    for i in range(0,BASIS_NUM-1):
+                        for j in range(i+1,BASIS_NUM):
+                            AMP = [0,0,0,0]
+                            PHA = [0,0,0,0]
+                            # TODO: please optimize the calculation of LG, remove the redundant calculation
+                            for k in range(0,6):
+                                if k == 0:
+                                    AMP[i] = 1
+                                elif k == 1:
+                                    AMP[j] = 1
+                                elif k == 2:
+                                    AMP[i] = 1
+                                    AMP[j] = 1
+                                elif k == 3:
+                                    AMP[i] = 1
+                                    AMP[j] = 1
+                                    PHA[j] = PI
+                                elif k == 4:
+                                    AMP[i] = 1
+                                    AMP[j] = 1
+                                    PHA[j] = PI/2
+                                elif k == 5:
+                                    AMP[i] = 1
+                                    AMP[j] = 1
+                                    PHA[j] = -PI/2
+                                MEA_BAS.append({'Amp':AMP,'Pha':PHA,'Topo':TOPO,'P':TOPO_P,'MD':[1]})
+                                AMP = [0,0,0,0]
+                                PHA = [0,0,0,0]
+                case "MUB":
+                    import numpy as np
+                    d = BASIS_NUM
+                    omega = np.exp(2 * np.pi * 1j / d)
+                    X = np.zeros((d, d), dtype=np.complex128)
+                    Z = np.eye(d, dtype=np.complex128)
+
+                    for i in range(d-1):
+                        X[i+1, i] = 1
+                    X[0,d-1] = 1
+
+                    for i in range(d):
+                        Z[i,i] = omega**i
+
+                    Weyl_operator = []  
+                    Weyl_operator.append(Z)
+                    for i in range(d):
+                        ZI = np.linalg.matrix_power(Z, i)
+                        Weyl_operator.append(X@ZI)
+
+                    MUB = np.zeros((d, d*(d+1)), dtype=np.complex128)
+
+                    for i in range(d+1):
+                        eigen_vals, eigen_vecs = np.linalg.eig(Weyl_operator[i])
+                        print(eigen_vecs)
+                        MUB[:,i*d:i*d+d] = eigen_vecs
+                    MUB_BAISI_NUM = BASIS_NUM*(BASIS_NUM+1)
+                    for i in range(MUB_BAISI_NUM):
+                        _basis = MUB[:,i]
+                        _amp = np.abs(_basis)
+                        _pha = np.angle(_basis)
+                        MEA_BAS.append({'Amp':_amp.tolist(),'Pha':_pha.tolist(),'Topo':TOPO,'P':TOPO_P,'MD':[1]})
+                case "RANDOM":
+                    import numpy as np
+                    from scipy.stats import unitary_group
+                    # x = unitary_group.rvs(3)
+                    d = BASIS_NUM
+                    RAMDOM_BASE_NUM = 3
+                    RAMDOM_BASE = []
+                    RAMDOM_BASE_2 = []
+                    for i in range(RAMDOM_BASE_NUM):
+                        RAMDOM_BASE.append(unitary_group.rvs(d))
+                        RAMDOM_BASE_2.append(unitary_group.rvs(d))
+                    RANDOM_BASIS = np.zeros((d, d*RAMDOM_BASE_NUM), dtype=np.complex128)
+                    RANDOM_BASIS_2 = np.zeros((d, d*RAMDOM_BASE_NUM), dtype=np.complex128)
+                    MEA_BAS_2 = []
+                    computational_basis = np.eye(d, dtype=np.complex128)
+                    for i in range(RAMDOM_BASE_NUM):
+                        for j in range(d):
+                            RANDOM_BASIS[:,i*d+j] = RAMDOM_BASE[i]@computational_basis[:,j]
+                            RANDOM_BASIS_2[:,i*d+j] = RAMDOM_BASE_2[i]@computational_basis[:,j]
+                    for i in range(d*RAMDOM_BASE_NUM):
+                        _basis = RANDOM_BASIS[:,i]
+                        _amp = np.abs(_basis)
+                        _pha = np.angle(_basis)
+                        MEA_BAS.append({'Amp':_amp.tolist(),'Pha':_pha.tolist(),'Topo':TOPO,'P':TOPO_P,'MD':[1]})
+                        _basis = RANDOM_BASIS_2[:,i]
+                        _amp = np.abs(_basis)
+                        _pha = np.angle(_basis)
+                        MEA_BAS_2.append({'Amp':_amp.tolist(),'Pha':_pha.tolist(),'Topo':TOPO,'P':TOPO_P,'MD':[1]})
+                    
+                    _mea_bas_2_num = len(MEA_BAS_2)
+                    with open('.\\'+str(MEA_BASE_NAME)+'_mea_base_2.txt','w', encoding = 'utf-8') as f:
+                        for i in range(0,_mea_bas_2_num):
+                            f.write(json.dumps(MEA_BAS_2[i]))
+                            f.write('\n')
 
 
-
-    lock = threading.Lock()
-    SLM = slmPy.SLMdisplay(3)
-    TH260P = myPico(SLM)
-    b = {'Amp':[1],'Pha':[0],'Topo':[0]}
-    c = {'Amp':[1],'Pha':[0],'Topo':[1]}
-    d = {'Amp':[1],'Pha':[0],'Topo':[-1]}
-
-    WBAIS = 0
-    HBAIS = 0
-    SLM.refresh(1, WBAIS, HBAIS, b)
-    SLM.frame[1].Window.img.SaveFile('slm0.png', wx.BITMAP_TYPE_PNG)
-    TH260P.window.holoDisplay(0)
-
-    TOPO = [-2,-1,1,2]
-    BASIS_NUM = len(TOPO)
-    MEA_BAS = []
-
-    MEA_BASE_NAME = "PAULI"
-    match MEA_BASE_NAME:
-        case "PAULI":
-            for i in range(0,BASIS_NUM-1):
-                for j in range(i+1,BASIS_NUM):
-                    AMP = [0,0,0,0]
-                    PHA = [0,0,0,0]
-                    # TODO: please optimize the calculation of LG, remove the redundant calculation
-                    for k in range(0,6):
-                        if k == 0:
-                            AMP[i] = 1
-                        elif k == 1:
-                            AMP[j] = 1
-                        elif k == 2:
-                            AMP[i] = 1
-                            AMP[j] = 1
-                        elif k == 3:
-                            AMP[i] = 1
-                            AMP[j] = 1
-                            PHA[j] = PI
-                        elif k == 4:
-                            AMP[i] = 1
-                            AMP[j] = 1
-                            PHA[j] = PI/2
-                        elif k == 5:
-                            AMP[i] = 1
-                            AMP[j] = 1
-                            PHA[j] = -PI/2
-                        MEA_BAS.append({'Amp':AMP,'Pha':PHA,'Topo':TOPO})
-                        AMP = [0,0,0,0]
-                        PHA = [0,0,0,0]
-        case "MUB":
-            import numpy as np
-            d = BASIS_NUM
-            omega = np.exp(2 * np.pi * 1j / d)
-            X = np.zeros((d, d), dtype=np.complex128)
-            Z = np.eye(d, dtype=np.complex128)
-
-            for i in range(d-1):
-                X[i+1, i] = 1
-            X[0,d-1] = 1
-
-            for i in range(d):
-                Z[i,i] = omega**i
-
-            Weyl_operator = []  
-            Weyl_operator.append(Z)
-            for i in range(d):
-                ZI = np.linalg.matrix_power(Z, i)
-                Weyl_operator.append(X@ZI)
-
-            MUB = np.zeros((d, d*(d+1)), dtype=np.complex128)
-
-            for i in range(d+1):
-                eigen_vals, eigen_vecs = np.linalg.eig(Weyl_operator[i])
-                print(eigen_vecs)
-                MUB[:,i*d:i*d+d] = eigen_vecs
-            MUB_BAISI_NUM = BASIS_NUM*(BASIS_NUM+1)
-            for i in range(MUB_BAISI_NUM):
-                _basis = MUB[:,i]
-                _amp = np.abs(_basis)
-                _pha = np.angle(_basis)
-                MEA_BAS.append({'Amp':_amp.tolist(),'Pha':_pha.tolist(),'Topo':TOPO})
-        case "RANDOM":
-            import numpy as np
-            from scipy.stats import unitary_group
-            # x = unitary_group.rvs(3)
-            d = BASIS_NUM
-            RAMDOM_BASE_NUM = 3
-            RAMDOM_BASE = []
-            RAMDOM_BASE_2 = []
-            for i in range(RAMDOM_BASE_NUM):
-                RAMDOM_BASE.append(unitary_group.rvs(d))
-                RAMDOM_BASE_2.append(unitary_group.rvs(d))
-            RANDOM_BASIS = np.zeros((d, d*RAMDOM_BASE_NUM), dtype=np.complex128)
-            RANDOM_BASIS_2 = np.zeros((d, d*RAMDOM_BASE_NUM), dtype=np.complex128)
-            MEA_BAS_2 = []
-            computational_basis = np.eye(d, dtype=np.complex128)
-            for i in range(RAMDOM_BASE_NUM):
-                for j in range(d):
-                    RANDOM_BASIS[:,i*d+j] = RAMDOM_BASE[i]@computational_basis[:,j]
-                    RANDOM_BASIS_2[:,i*d+j] = RAMDOM_BASE_2[i]@computational_basis[:,j]
-            for i in range(d*RAMDOM_BASE_NUM):
-                _basis = RANDOM_BASIS[:,i]
-                _amp = np.abs(_basis)
-                _pha = np.angle(_basis)
-                MEA_BAS.append({'Amp':_amp.tolist(),'Pha':_pha.tolist(),'Topo':TOPO})
-                _basis = RANDOM_BASIS_2[:,i]
-                _amp = np.abs(_basis)
-                _pha = np.angle(_basis)
-                MEA_BAS_2.append({'Amp':_amp.tolist(),'Pha':_pha.tolist(),'Topo':TOPO})
-            
-            _mea_bas_2_num = len(MEA_BAS_2)
-            with open('.\\'+str(MEA_BASE_NAME)+'_mea_base_2.txt','w', encoding = 'utf-8') as f:
-                for i in range(0,_mea_bas_2_num):
-                    f.write(json.dumps(MEA_BAS_2[i]))
+            MEA_BAS_NUM =len(MEA_BAS)
+            with open('.\\'+str(MEA_BASE_NAME)+'_mea_base.txt','w', encoding = 'utf-8') as f:
+                for i in range(0,MEA_BAS_NUM):
+                    f.write(json.dumps(MEA_BAS[i]))
                     f.write('\n')
-
-
-    MEA_BAS_NUM =len(MEA_BAS)
-    with open('.\\'+str(MEA_BASE_NAME)+'_mea_base.txt','w', encoding = 'utf-8') as f:
-        for i in range(0,MEA_BAS_NUM):
-            f.write(json.dumps(MEA_BAS[i]))
-            f.write('\n')
-    
-
-    import os
-    import datetime
-    current_path = os.path.abspath('.')
-    current_time = datetime.datetime.now().strftime('%Y-%m-%d' '-%H-%M-%S')
-
-    data_path = current_path + '\\' + current_time
-    if not os.path.exists(data_path):
-        os.mkdir(data_path)
-
-    MEA_COUNT = 0
-
-    time1 = datetime.datetime.now()
-    for i in range(0,MEA_BAS_NUM):
-        sync = MEA_BAS[i]
-        TH260P.window.refresh_1(sync, direct_call = True)
-        for j in range(0,MEA_BAS_NUM):
-            cha1 = MEA_BAS[j]
-            if MEA_BASE_NAME == "RANDOM":
-                cha1 = MEA_BAS_2[j]
-            TH260P.window.refresh_2(cha1, direct_call = True)
-            time.sleep(0.1)
-            #------------------------------------------
-            COLLECT_TIME = int(5.5*1000)       # int:[ms]  how many times to collect data
-            COLLECT_INTERVAL = 1               # [s]   interval between two collect
-            COLLECT_T = COLLECT_TIME * COLLECT_INTERVAL
-            TH260P.TH260.timeTrace.setNumBins(10)
-            TH260P.TH260.timeTrace.setHistorySize(5)    # []
-            TH260P.TH260.timeTrace.measure(acqTime = COLLECT_T, waitFinished = True, savePTU = False)      # acqTime: [ms]
             
-            # set the save 
-            assert(TH260P.TH260.timeTrace.isFinished())
-            counts, times = TH260P.TH260.timeTrace.getData(normalized = False) 
-            # TH260P.TH260.timeTrace.stopMeasure()
-            syncrate = counts[0][-1]
-            chan1rate = counts[1][-1]
-            ccrate = counts[TH260P.cc_channel][-1]
-            hrate = counts[TH260P.herald_channel][-1]
-            TH260P.poData2GUI(([syncrate, chan1rate, ccrate, hrate[-1]]))
-            # TODO: save the data
-            with open(data_path + '\\' + 'sync_' + str(i) + 'chal1_' + str(j) + '.txt','w', encoding = 'utf-8') as f:
-                f.write(json.dumps([i,MEA_BAS[i],j,MEA_BAS[j]]))
-                f.write('\n')
-                f.write(json.dumps(times.tolist()))
-                f.write('\n')
-                f.write(json.dumps(counts[0].tolist()))
-                f.write('\n')
-                f.write(json.dumps(counts[1].tolist()))
-                f.write('\n')
-                f.write(json.dumps(counts[TH260P.cc_channel].tolist()))
-                f.write('\n')
-                f.write(json.dumps(counts[TH260P.herald_channel].tolist()))
-                MEA_COUNT += 1
-                time2 = datetime.datetime.now()
-                time_elapsed = time2-time1
-                percentange = MEA_COUNT/MEA_BAS_NUM**2
-                expect_finishtime = time1 + time_elapsed/percentange
-                logger.error('MEA_COUNT:{} PERCENTAGE:{} TIME_ELAPSED:{} '.format(MEA_COUNT, percentange, time_elapsed))
-                logger.error('Expected finish time:{}'.format(expect_finishtime))
-                TH260P.window.expected_finishedtime.setText('Expect finishing at: {}'.format(expect_finishtime))
-                if TH260P.window.uiclose_flag == 1:
-                    TH260P.TH260.closeDevice()
-                    time.sleep(1)
-                    sys.exit(0)
-    TH260P.window.expected_finishedtime.setText('Measurement finished! Time costs: {}'.format(time_elapsed))
+
+            import os
+            import datetime
+            current_path = os.path.abspath('.')
+            current_time = datetime.datetime.now().strftime('%Y-%m-%d' '-%H-%M-%S')
+
+            data_path = current_path + '\\' + current_time
+            if not os.path.exists(data_path):
+                os.mkdir(data_path)
+
+            MEA_COUNT = 0
+
+            time1 = datetime.datetime.now()
+            for i in range(0,MEA_BAS_NUM):
+                sync = MEA_BAS[i]
+                TH260P.window.refresh_1(sync, direct_call = True)
+                for j in range(0,MEA_BAS_NUM):
+                    cha1 = MEA_BAS[j]
+                    if MEA_BASE_NAME == "RANDOM":
+                        cha1 = MEA_BAS_2[j]
+                    TH260P.window.refresh_2(cha1, direct_call = True)
+                    time.sleep(0.1)
+                    #------------------------------------------
+                    COLLECT_TIME = int(5.5*1000)       # int:[ms]  how many times to collect data
+                    COLLECT_INTERVAL = 1               # [s]   interval between two collect
+                    COLLECT_T = COLLECT_TIME * COLLECT_INTERVAL
+                    TH260P.TH260.timeTrace.setNumBins(10)
+                    TH260P.TH260.timeTrace.setHistorySize(5)    # []
+                    TH260P.TH260.timeTrace.measure(acqTime = COLLECT_T, waitFinished = True, savePTU = False)      # acqTime: [ms]
+                    
+                    # set the save 
+                    assert(TH260P.TH260.timeTrace.isFinished())
+                    counts, times = TH260P.TH260.timeTrace.getData(normalized = False) 
+                    # TH260P.TH260.timeTrace.stopMeasure()
+                    syncrate = counts[0][-1]
+                    chan1rate = counts[1][-1]
+                    ccrate = counts[TH260P.cc_channel][-1]
+                    hrate = counts[TH260P.herald_channel][-1]
+                    TH260P.poData2GUI(([syncrate, chan1rate, ccrate, hrate[-1]]))
+                    # TODO: save the data
+                    with open(data_path + '\\' + 'sync_' + str(i) + 'chal1_' + str(j) + '.txt','w', encoding = 'utf-8') as f:
+                        f.write(json.dumps([i,MEA_BAS[i],j,MEA_BAS[j]]))
+                        f.write('\n')
+                        f.write(json.dumps(times.tolist()))
+                        f.write('\n')
+                        f.write(json.dumps(counts[0].tolist()))
+                        f.write('\n')
+                        f.write(json.dumps(counts[1].tolist()))
+                        f.write('\n')
+                        f.write(json.dumps(counts[TH260P.cc_channel].tolist()))
+                        f.write('\n')
+                        f.write(json.dumps(counts[TH260P.herald_channel].tolist()))
+                        MEA_COUNT += 1
+                        time2 = datetime.datetime.now()
+                        time_elapsed = time2-time1
+                        percentange = MEA_COUNT/MEA_BAS_NUM**2
+                        expect_finishtime = time1 + time_elapsed/percentange
+                        logger.error('MEA_COUNT:{} PERCENTAGE:{} TIME_ELAPSED:{} '.format(MEA_COUNT, percentange, time_elapsed))
+                        logger.error('Expected finish time:{}'.format(expect_finishtime))
+                        TH260P.window.expected_finishedtime.setText('Expect finishing at: {}'.format(expect_finishtime))
+                        if TH260P.window.uiclose_flag == 1:
+                            TH260P.TH260.closeDevice()
+                            time.sleep(1)
+                            sys.exit(0)
+            TH260P.window.expected_finishedtime.setText('Measurement finished! Time costs: {}'.format(time_elapsed))
 
 
 

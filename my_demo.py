@@ -479,7 +479,7 @@ if __name__ == '__main__':
     # time.sleep(2)
     # TH260P.runMea()
 
-
+    
 
     lock = threading.Lock()
     SLM = slmPy.SLMdisplay(3)

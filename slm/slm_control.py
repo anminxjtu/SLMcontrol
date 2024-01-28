@@ -119,6 +119,7 @@ class LGhologram():
                  l,
                  w,
                  h,
+                 p = 0,
                  wBias = 0,
                  hBias = 0,
                  pixelPitch = PIXELPITCH,
@@ -127,6 +128,7 @@ class LGhologram():
                  blaze = BLAZE
                 ):
         self.ell = l
+        self.p = p
         self.blaze = blaze
         self.omega0 = beamWaist
         self.x = np.linspace(0, w, w)*pixelPitch
@@ -245,13 +247,14 @@ class Superhologram(LGhologram):
                 l,
                 w,
                 h,
+                p = 0,
                 wBais = 0,
                 hBais = 0,
                 pixelPitch = PIXELPITCH,
                 beamWaist = BEAMWAIST,
                 waveLength = WAVELENGTH,
                 blaze = BLAZE):
-        super(LGhologram, self).__init__(l,w,h,wBais,hBais)
+        super(LGhologram, self).__init__(l,w,h,p,wBais,hBais)
         pass
 
     def phaseHologram(self, modulation_depth = 1):

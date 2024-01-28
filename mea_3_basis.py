@@ -254,10 +254,10 @@ class Ui(QMainWindow):
         self.ui.spinBox_xbias1_3.setRange(-960,960)
         self.ui.spinBox_ybias1_3.setRange(-960,960)
 
-        self.ui.spinBox_xbias1_2.setValue(175)
-        self.ui.spinBox_ybias1_2.setValue(-40)
-        self.ui.spinBox_xbias1_3.setValue(-5)
-        self.ui.spinBox_ybias1_3.setValue(-500)
+        self.ui.spinBox_xbias1_2.setValue(0)
+        self.ui.spinBox_ybias1_2.setValue(0)
+        self.ui.spinBox_xbias1_3.setValue(0)
+        self.ui.spinBox_ybias1_3.setValue(0)
 
         self.ui.doubleSpinBox_MD1.setValue(1.00)
         self.ui.doubleSpinBox_MD2.setValue(1.00)
@@ -358,7 +358,7 @@ class Ui(QMainWindow):
         TH260P.window.holoDisplay(_which_frame-1)
         lock.release()
 
-    def refresh_1(self, new_ell = {}, direct_call = False):
+    def refresh_1(self, new_ell = {}, wbais = 0, hbais = 0, direct_call = False):
         _which_frame = 2
         lock.acquire()
         if direct_call == False:
@@ -396,14 +396,15 @@ class Ui(QMainWindow):
             # new_p = {}
             # new_p['P'] = acquired_p
 
-        wbais = self.ui.spinBox_xbias1_2.value()
-        hbais = self.ui.spinBox_ybias1_2.value()
+            wbais = self.ui.spinBox_xbias1_2.value()
+            hbais = self.ui.spinBox_ybias1_2.value()
 
         def postfun(new_ell, which_frame):
             _pic = slmPy.Superhologram(new_ell, int(1920/2), 1080, wbais, hbais).img     # Here splitting because of 1920/2
             # TODO: POST the pic to the thread: wx
             event = slmPy.ImageEvent()
             event.img = _pic
+            event.split = False
             wx.PostEvent(self.slm.frame[which_frame], event)    # 怎么把球传出去
             # time.sleep(0.2)
             _pic.SaveFile('slm'+str(which_frame-1)+'.png', wx.BITMAP_TYPE_PNG)
@@ -419,7 +420,7 @@ class Ui(QMainWindow):
         lock.release()   
 
 
-    def refresh_2(self, new_ell = {}, direct_call = False):
+    def refresh_2(self, new_ell = {}, wbais = 0, hbais = 0, direct_call = False):
         _which_frame = 2
         lock.acquire()
         if direct_call == False:
@@ -457,8 +458,8 @@ class Ui(QMainWindow):
             # new_p = {}
             # new_p['P'] = acquired_p
 
-        wbais = self.ui.spinBox_xbias1_3.value()
-        hbais = self.ui.spinBox_ybias1_3.value()
+            wbais = self.ui.spinBox_xbias1_3.value()
+            hbais = self.ui.spinBox_ybias1_3.value()
 
         def postfun(new_ell, which_frame):
             _pic = slmPy.Superhologram(new_ell, int(1920/2), 1080, wbais, hbais).img     # Here splitting because of 1920/2
@@ -553,18 +554,95 @@ if __name__ == '__main__':
 
         case 1:
             '''
+            search the center of hologram
+            '''
+            lock = threading.Lock()
+
+
+            SLM = slmPy.SLMdisplay(3)
+
+            TH260P = myPico(SLM)
+
+            time.sleep(3)
+            logger.warning('----------1111111111!-----------')
+            slm0 = {'Amp':[1],'Pha':[0],'Topo':[0], 'P':[0], 'MD':[1]}
+            slm1 = {'Amp':[1],'Pha':[0],'Topo':[0], 'P':[0], 'MD':[1]}
+            slm2 = {'Amp':[1],'Pha':[0],'Topo':[0], 'P':[0], 'MD':[1]}
+
+            WBAIS = 0
+            HBAIS = 0
+            SLM.refresh(1, WBAIS, HBAIS, slm0)
+            SLM.frame[1].Window.img.SaveFile('slm0.png', wx.BITMAP_TYPE_PNG)
+            TH260P.window.holoDisplay(0)
+
+            TH260P.window.refresh_1(slm1, direct_call = True)
+            TH260P.window.refresh_2(slm2, direct_call = True)
+            
+            ww = range(-960,961,2)
+            # hh = range(-1080,1080,200)
+            # data = np.zeros((len(ww),len(hh)))
+            data = np.zeros((len(ww),1))
+            jj = 0
+            kk = 0
+            for _wbais in ww:
+                for _hbais in [0]:
+                    TH260P.window.spinBox_xbias1_3.setValue(_wbais)
+                    TH260P.window.spinBox_ybias1_3.setValue(_hbais)
+
+                    TH260P.window.refresh_2(slm2, _wbais, _hbais, direct_call = True)
+                    time.sleep(0.3)
+                    #------------------------------------------
+                    COLLECT_TIME = int(3*1000)       # int:[ms]  how many times to collect data
+                    COLLECT_INTERVAL = 1               # [s]   interval between two collect
+                    COLLECT_T = COLLECT_TIME * COLLECT_INTERVAL
+                    TH260P.TH260.timeTrace.setNumBins(3)
+                    TH260P.TH260.timeTrace.setHistorySize(3)    # []
+                    TH260P.TH260.timeTrace.measure(acqTime = COLLECT_T, waitFinished = True, savePTU = False)      # acqTime: [ms]
+                    
+                    # set the save 
+                    assert(TH260P.TH260.timeTrace.isFinished())
+                    counts, times = TH260P.TH260.timeTrace.getData(normalized = False) 
+                    # TH260P.TH260.timeTrace.stopMeasure()
+                    syncrate = counts[0][-1]
+                    chan1rate = counts[1][-1]
+                    ccrate = counts[TH260P.cc_channel][-1]
+                    hrate = counts[TH260P.herald_channel][-1]
+                    TH260P.poData2GUI(([syncrate, chan1rate, ccrate, hrate[-1]]))
+                    # TODO: save the data
+
+                    data[jj, kk] = np.mean(counts[TH260P.cc_channel].tolist())
+                    kk = kk + 1
+                    time.sleep(0.3)
+
+                    if TH260P.window.uiclose_flag == 1:
+                        TH260P.TH260.closeDevice()
+                        time.sleep(1)
+                        sys.exit(0)
+                jj = jj + 1
+                kk = 0
+
+            np.savetxt("findCenter2.txt", data, fmt = '%.2f', delimiter = " ")
+
+            # import matplotlib.pyplot as plt
+            # plt.imshow(data)
+            # plt.show()
+
+
+
+        case 2:
+            '''
             Measurement mode
             '''
             lock = threading.Lock()
             SLM = slmPy.SLMdisplay(3)
             TH260P = myPico(SLM)
-            b = {'Amp':[1],'Pha':[0],'Topo':[0], 'P':[0], 'MD':[1]}
+            b = {'Amp':[1],'Pha':[0],'Topo':[0], 'P':[0], 'MD':[1]}    # 405 hologram
             c = {'Amp':[1],'Pha':[0],'Topo':[1], 'P':[0], 'MD':[1]}
             d = {'Amp':[1],'Pha':[0],'Topo':[-1], 'P':[0], 'MD':[1]}
 
             WBAIS = 0
             HBAIS = 0
-            SLM.refresh(1, WBAIS, HBAIS, b)
+            SLM.refresh(1, WBAIS, HBAIS, b)     # 405 hologram
             SLM.frame[1].Window.img.SaveFile('slm0.png', wx.BITMAP_TYPE_PNG)
             TH260P.window.holoDisplay(0)
 
@@ -580,8 +658,8 @@ if __name__ == '__main__':
                 case "PAULI":
                     for i in range(0,BASIS_NUM-1):
                         for j in range(i+1,BASIS_NUM):
-                            AMP = [0,0,0,0]
-                            PHA = [0,0,0,0]
+                            AMP = [0] * BASIS_NUM
+                            PHA = [0] * BASIS_NUM
                             # TODO: please optimize the calculation of LG, remove the redundant calculation
                             for k in range(0,6):
                                 if k == 0:
@@ -604,8 +682,8 @@ if __name__ == '__main__':
                                     AMP[j] = 1
                                     PHA[j] = -PI/2
                                 MEA_BAS.append({'Amp':AMP,'Pha':PHA,'Topo':TOPO,'P':TOPO_P,'MD':[1]})
-                                AMP = [0,0,0,0]
-                                PHA = [0,0,0,0]
+                                AMP = [0] * BASIS_NUM
+                                PHA = [0] * BASIS_NUM
                 case "MUB":
                     import numpy as np
                     d = BASIS_NUM

@@ -25,12 +25,11 @@ file_handler.setLevel(logging.INFO)
 
 # 日志输出格式
 file_formatter = logging.Formatter(
-    fmt='[%(asctime)s.%(msecs)03d] thread:%(thread)s-%(threadName)s %(filename)s -> %(funcName)s line:%(lineno)d [%(levelname)s] : %(message)s',
+    fmt='[%(asctime)s.%(msecs)03d] %(filename)s -> %(funcName)s line:%(lineno)d [%(levelname)s] : %(message)s',
     datefmt='%Y-%m-%d  %H:%M:%S'
-    # log_colors=log_colors_config
 )
 console_formatter = colorlog.ColoredFormatter(
-    fmt='%(log_color)s[%(asctime)s.%(msecs)03d] thread:%(thread)s-%(threadName)s %(filename)s -> %(funcName)s line:%(lineno)d [%(levelname)s] : %(message)s',
+    fmt='%(log_color)s[%(asctime)s.%(msecs)03d] thread:%(thread)s %(filename)s -> %(funcName)s line:%(lineno)d [%(levelname)s] : %(message)s',
     datefmt='%Y-%m-%d  %H:%M:%S',
     log_colors=log_colors_config
 )

@@ -254,10 +254,10 @@ class Ui(QMainWindow):
         self.ui.spinBox_xbias1_3.setRange(-960,960)
         self.ui.spinBox_ybias1_3.setRange(-960,960)
 
-        self.ui.spinBox_xbias1_2.setValue(0)
-        self.ui.spinBox_ybias1_2.setValue(0)
-        self.ui.spinBox_xbias1_3.setValue(0)
-        self.ui.spinBox_ybias1_3.setValue(0)
+        self.ui.spinBox_xbias1_2.setValue(275)
+        self.ui.spinBox_ybias1_2.setValue(100)
+        self.ui.spinBox_xbias1_3.setValue(50)
+        self.ui.spinBox_ybias1_3.setValue(-600)
 
         self.ui.doubleSpinBox_MD1.setValue(1.00)
         self.ui.doubleSpinBox_MD2.setValue(1.00)
@@ -518,7 +518,8 @@ PI = math.pi
 if __name__ == '__main__':
     '''
     0: Display mode
-    1: Measurement mode
+    1: Searching mode
+    2: Measurement mode
     '''
 
     MODE_SELECT = 0
@@ -556,6 +557,8 @@ if __name__ == '__main__':
             '''
             search the center of hologram
             '''
+            import datetime
+
             lock = threading.Lock()
 
 
@@ -566,7 +569,7 @@ if __name__ == '__main__':
             time.sleep(3)
             logger.warning('----------1111111111!-----------')
             slm0 = {'Amp':[1],'Pha':[0],'Topo':[0], 'P':[0], 'MD':[1]}
-            slm1 = {'Amp':[1],'Pha':[0],'Topo':[0], 'P':[0], 'MD':[1]}
+            slm1 = {'Amp':[1],'Pha':[0],'Topo':[1], 'P':[0], 'MD':[1]}
             slm2 = {'Amp':[1],'Pha':[0],'Topo':[0], 'P':[0], 'MD':[1]}
 
             WBAIS = 0
@@ -578,61 +581,195 @@ if __name__ == '__main__':
             TH260P.window.refresh_1(slm1, direct_call = True)
             TH260P.window.refresh_2(slm2, direct_call = True)
             
-            ww = range(-960,961,2)
-            # hh = range(-1080,1080,200)
-            # data = np.zeros((len(ww),len(hh)))
-            data = np.zeros((len(ww),1))
-            jj = 0
-            kk = 0
-            for _wbais in ww:
-                for _hbais in [0]:
-                    TH260P.window.spinBox_xbias1_3.setValue(_wbais)
-                    TH260P.window.spinBox_ybias1_3.setValue(_hbais)
+            METHOD = 0
+            match METHOD:
+                case 0:
+                    '''
+                    full search
+                    '''
+                    ww = range(-960,961,100)
+                    hh = range(-1080,1081,100)
+                    data = np.zeros((len(ww),len(hh)))
+                    # data = np.zeros((len(ww),1))
+                    jj = 0
+                    kk = 0
+                    COUNT = 0
+                    time1 = datetime.datetime.now()
+                    for _wbais in ww:
+                        for _hbais in hh:
+                            TH260P.window.spinBox_xbias1_3.setValue(_wbais)
+                            TH260P.window.spinBox_ybias1_3.setValue(_hbais)
+                            
+                            TH260P.window.refresh_1(slm1, _wbais, _hbais, direct_call = True)
+                            # TH260P.window.refresh_2(slm2, _wbais, _hbais, direct_call = True)
+                            time.sleep(0.3)
+                            #------------------------------------------
+                            COLLECT_TIME = int(3*1000)       # int:[ms]  how many times to collect data
+                            COLLECT_INTERVAL = 1               # [s]   interval between two collect
+                            COLLECT_T = COLLECT_TIME * COLLECT_INTERVAL
+                            TH260P.TH260.timeTrace.setNumBins(3)
+                            TH260P.TH260.timeTrace.setHistorySize(3)    # []
+                            TH260P.TH260.timeTrace.measure(acqTime = COLLECT_T, waitFinished = True, savePTU = False)      # acqTime: [ms]
+                            
+                            # set the save 
+                            assert(TH260P.TH260.timeTrace.isFinished())
+                            counts, times = TH260P.TH260.timeTrace.getData(normalized = False) 
+                            # TH260P.TH260.timeTrace.stopMeasure()
+                            syncrate = counts[0][-1]
+                            chan1rate = counts[1][-1]
+                            ccrate = counts[TH260P.cc_channel][-1]
+                            hrate = counts[TH260P.herald_channel][-1]
+                            TH260P.poData2GUI(([syncrate, chan1rate, ccrate, hrate[-1]]))
+                            # TODO: save the data
 
-                    TH260P.window.refresh_2(slm2, _wbais, _hbais, direct_call = True)
-                    time.sleep(0.3)
-                    #------------------------------------------
-                    COLLECT_TIME = int(3*1000)       # int:[ms]  how many times to collect data
-                    COLLECT_INTERVAL = 1               # [s]   interval between two collect
-                    COLLECT_T = COLLECT_TIME * COLLECT_INTERVAL
-                    TH260P.TH260.timeTrace.setNumBins(3)
-                    TH260P.TH260.timeTrace.setHistorySize(3)    # []
-                    TH260P.TH260.timeTrace.measure(acqTime = COLLECT_T, waitFinished = True, savePTU = False)      # acqTime: [ms]
-                    
-                    # set the save 
-                    assert(TH260P.TH260.timeTrace.isFinished())
-                    counts, times = TH260P.TH260.timeTrace.getData(normalized = False) 
-                    # TH260P.TH260.timeTrace.stopMeasure()
-                    syncrate = counts[0][-1]
-                    chan1rate = counts[1][-1]
-                    ccrate = counts[TH260P.cc_channel][-1]
-                    hrate = counts[TH260P.herald_channel][-1]
-                    TH260P.poData2GUI(([syncrate, chan1rate, ccrate, hrate[-1]]))
-                    # TODO: save the data
+                            data[jj, kk] = np.mean(counts[TH260P.cc_channel].tolist())
+                            kk = kk + 1
+                            time.sleep(0.3)
 
-                    data[jj, kk] = np.mean(counts[TH260P.cc_channel].tolist())
-                    kk = kk + 1
-                    time.sleep(0.3)
+                            COUNT = COUNT + 1
+                            time2 = datetime.datetime.now()
+                            time_elapsed = time2-time1
+                            percentange = COUNT/len(ww)/len(hh)
+                            expect_finishtime = time1 + time_elapsed/percentange
+                            TH260P.window.expected_finishedtime.setText('Expect finishing at: {}'.format(expect_finishtime))
 
-                    if TH260P.window.uiclose_flag == 1:
-                        TH260P.TH260.closeDevice()
-                        time.sleep(1)
-                        sys.exit(0)
-                jj = jj + 1
-                kk = 0
+                            if TH260P.window.uiclose_flag == 1:
+                                TH260P.TH260.closeDevice()
+                                time.sleep(1)
+                                sys.exit(0)
+                        jj = jj + 1
+                        kk = 0
 
-            np.savetxt("findCenter2.txt", data, fmt = '%.2f', delimiter = " ")
+                    np.savetxt("findCenter3.txt", data, fmt = '%.2f', delimiter = " ")
+                    TH260P.window.expected_finishedtime.setText('Measurement finished! Time costs: {}'.format(time_elapsed))
 
-            # import matplotlib.pyplot as plt
-            # plt.imshow(data)
-            # plt.show()
+                case 1:
+                    '''
+                    Simulated Annealing Algorithm
+                    '''
+                    _wbais = [0,-500]
+                    _hbais = [0,-200]
+                    _data = []
+                    T0 = 100
+                    T_min = 0
+                    rate = 0.95
 
+                    for ii in range(len(_wbais)):
+                        TH260P.window.spinBox_xbias1_3.setValue(_wbais[ii])
+                        TH260P.window.spinBox_ybias1_3.setValue(_hbais[ii])
+                                
+                        TH260P.window.refresh_1(slm1, _wbais[ii], _hbais[ii], direct_call = True)
+                        # TH260P.window.refresh_2(slm2, _wbais[-1], _hbais[-1], direct_call = True)
+                        time.sleep(0.3)
+                        #------------------------------------------
+                        COLLECT_TIME = int(3*1000)       # int:[ms]  how many times to collect data
+                        COLLECT_INTERVAL = 1               # [s]   interval between two collect
+                        COLLECT_T = COLLECT_TIME * COLLECT_INTERVAL
+                        TH260P.TH260.timeTrace.setNumBins(3)
+                        TH260P.TH260.timeTrace.setHistorySize(3)    # []
+                        TH260P.TH260.timeTrace.measure(acqTime = COLLECT_T, waitFinished = True, savePTU = False)      # acqTime: [ms]
+                        
+                        # set the save 
+                        assert(TH260P.TH260.timeTrace.isFinished())
+                        counts, times = TH260P.TH260.timeTrace.getData(normalized = False) 
+                        # TH260P.TH260.timeTrace.stopMeasure()
+                        syncrate = counts[0][-1]
+                        chan1rate = counts[1][-1]
+                        ccrate = counts[TH260P.cc_channel][-1]
+                        hrate = counts[TH260P.herald_channel][-1]
+                        TH260P.poData2GUI(([syncrate, chan1rate, ccrate, hrate[-1]]))
+                        # TODO: save the data
+                        _data.append(np.mean(counts[TH260P.cc_channel].tolist()))
+                        time.sleep(0.3)
+
+                    import random
+                    jj = 0
+                    while T0 > T_min and jj < 50:
+                        _data_diff = abs(_data[-1] - _data[-2])
+                        if random.uniform(0,1) <= 0.5:
+                            _wdir = 1
+                        else:
+                            _wdir = -1
+                        if random.uniform(0,1) <= 0.5:
+                            _hdir = 1
+                        else:
+                            _hdir = -1
+                        new_wbais = int(_wbais[-1] + _wdir*20/math.sqrt(_data_diff))
+                        new_hbais = int(_hbais[-1] + _hdir*20/math.sqrt(_data_diff))
+
+                        
+
+                        TH260P.window.spinBox_xbias1_3.setValue(new_wbais)
+                        TH260P.window.spinBox_ybias1_3.setValue(new_hbais)
+                                
+                        TH260P.window.refresh_1(slm1, new_wbais, new_hbais, direct_call = True)
+                        # TH260P.window.refresh_2(slm2, _wbais[-1], _hbais[-1], direct_call = True)
+                        time.sleep(0.3)
+                        #------------------------------------------
+                        COLLECT_TIME = int(3*1000)       # int:[ms]  how many times to collect data
+                        COLLECT_INTERVAL = 1               # [s]   interval between two collect
+                        COLLECT_T = COLLECT_TIME * COLLECT_INTERVAL
+                        TH260P.TH260.timeTrace.setNumBins(3)
+                        TH260P.TH260.timeTrace.setHistorySize(3)    # []
+                        TH260P.TH260.timeTrace.measure(acqTime = COLLECT_T, waitFinished = True, savePTU = False)      # acqTime: [ms]
+                        
+                        # set the save 
+                        assert(TH260P.TH260.timeTrace.isFinished())
+                        counts, times = TH260P.TH260.timeTrace.getData(normalized = False) 
+                        # TH260P.TH260.timeTrace.stopMeasure()
+                        syncrate = counts[0][-1]
+                        chan1rate = counts[1][-1]
+                        ccrate = counts[TH260P.cc_channel][-1]
+                        hrate = counts[TH260P.herald_channel][-1]
+                        TH260P.poData2GUI(([syncrate, chan1rate, ccrate, hrate[-1]]))
+                        # TODO: save the data
+                        _dataTemp = np.mean(counts[TH260P.cc_channel].tolist())
+                        time.sleep(0.3)
+
+                        dE = _data[-1] - _data[-2]
+                        if dE < 0:
+                            _wbais.append(new_wbais)
+                            _hbais.append(new_hbais)
+                            _data.append(_dataTemp)
+                            if _dataTemp < 300:
+                                break
+                        elif np.exp(-dE/T0) > random.uniform(0,1):
+                            _wbais.append(new_wbais)
+                            _hbais.append(new_hbais)
+                            _data.append(_dataTemp)
+                        else:
+                            pass
+
+                        T0 = rate*T0
+                        jj = jj + 1
+
+                    np.savetxt("findCenter4.txt", _data, fmt = '%.2f', delimiter = " ")
+                    np.savetxt("wbais.txt", _wbais, fmt = '%.2f', delimiter = " ")
+                    np.savetxt("hbais.txt", _hbais, fmt = '%.2f', delimiter = " ")
+
+
+                case 2:
+                    '''
+                    Particle Swarm Algorithm
+                    '''
+                    pass
+
+
+            
 
 
         case 2:
             '''
             Measurement mode
             '''
+            SLM1_WBAIS = 0
+            SLM1_HBAIS = 0
+
+            SLM2_WBAIS = 0
+            SLM2_HBAIS = 0
+
+
+
             lock = threading.Lock()
             SLM = slmPy.SLMdisplay(3)
             TH260P = myPico(SLM)
@@ -653,7 +790,7 @@ if __name__ == '__main__':
             BASIS_NUM = len(TOPO)
             MEA_BAS = []
 
-            MEA_BASE_NAME = "PAULI"
+            MEA_BASE_NAME = "MUB"
             match MEA_BASE_NAME:
                 case "PAULI":
                     for i in range(0,BASIS_NUM-1):
@@ -773,12 +910,12 @@ if __name__ == '__main__':
             time1 = datetime.datetime.now()
             for i in range(0,MEA_BAS_NUM):
                 sync = MEA_BAS[i]
-                TH260P.window.refresh_1(sync, direct_call = True)
+                TH260P.window.refresh_1(sync, SLM1_WBAIS, SLM1_HBAIS, direct_call = True)
                 for j in range(0,MEA_BAS_NUM):
                     cha1 = MEA_BAS[j]
                     if MEA_BASE_NAME == "RANDOM":
                         cha1 = MEA_BAS_2[j]
-                    TH260P.window.refresh_2(cha1, direct_call = True)
+                    TH260P.window.refresh_2(cha1, SLM2_WBAIS, SLM2_HBAIS, direct_call = True)
                     time.sleep(0.1)
                     #------------------------------------------
                     COLLECT_TIME = int(5.5*1000)       # int:[ms]  how many times to collect data

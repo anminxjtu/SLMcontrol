@@ -522,7 +522,7 @@ if __name__ == '__main__':
     2: Measurement mode
     '''
 
-    MODE_SELECT = 0
+    MODE_SELECT = 2
 
     match MODE_SELECT:
         case 0:
@@ -762,11 +762,11 @@ if __name__ == '__main__':
             '''
             Measurement mode
             '''
-            SLM1_WBAIS = 0
-            SLM1_HBAIS = 0
+            SLM1_WBAIS = 215
+            SLM1_HBAIS = 100
 
-            SLM2_WBAIS = 0
-            SLM2_HBAIS = 0
+            SLM2_WBAIS = 75
+            SLM2_HBAIS = -600
 
 
 
@@ -783,8 +783,8 @@ if __name__ == '__main__':
             SLM.frame[1].Window.img.SaveFile('slm0.png', wx.BITMAP_TYPE_PNG)
             TH260P.window.holoDisplay(0)
 
-            TOPO = [-2,-1,1,2]
-            TOPO_P = [1,2,3,4]
+            TOPO = [-2,-1,0,1,2]
+            TOPO_P = [0,0,0,0,0]
             assert(len(TOPO) == len(TOPO_P))
 
             BASIS_NUM = len(TOPO)
